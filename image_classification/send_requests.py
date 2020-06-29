@@ -23,6 +23,8 @@ from pycloud_client.client import GRPCClient
 
 from helpers import get_random_image
 
+logging.basicConfig(level=logging.INFO)
+
 LOGGER = logging.getLogger("ClassificationDemo")
 
 HOST = sys.argv[1]
