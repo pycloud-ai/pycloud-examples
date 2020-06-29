@@ -1,0 +1,6 @@
+fairseq
+torch
+moses
+subword_nmt
+sacremoses
+pycloud-client==0.7.1
