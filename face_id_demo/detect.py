@@ -15,5 +15,5 @@ image_file = sys.argv[3]
 
 client = GRPCClient(grpc_host, grpc_port)
 
-response = client.request("recognize@face_recognition_demo", load_image(image_file))
+response = client.request("recognize@face_id_demo", load_image(image_file))
 print(response)

@@ -16,5 +16,5 @@ name = sys.argv[4]
 
 client = GRPCClient(grpc_host, grpc_port)
 
-response = client.request("add_known_encoding@face_recognition_demo", load_image(image_file), name)
+response = client.request("register@face_id_demo", load_image(image_file), name)
 print(response)
