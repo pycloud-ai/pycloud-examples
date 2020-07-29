@@ -9,14 +9,12 @@ from pycloud.core import PyCloud
 from PIL import Image
 
 EXISTS_IN_DATABASE = "Name {} already exists in database"
-
 NO_FACE_DETECTED = "No face detected"
-
 TOO_MANY_FACES = "Too many faces"
+DIR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 CLOUD = PyCloud.get_instance()
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
 
 @CLOUD.init_service("face_recognition")
 def initialize_service():
@@ -69,29 +67,29 @@ def recognize(image):
 
 
 if __name__ == "__main__":
-    obama_image = face_recognition.load_image_file(os.path.join(dir_path, "obama.jpeg"))
-    unknown_image = face_recognition.load_image_file(os.path.join(dir_path, "obama2.jpeg"))
-    unknown_image2 = face_recognition.load_image_file(os.path.join(dir_path, "krzych.jpeg"))
-    two_guys = face_recognition.load_image_file(os.path.join(dir_path, "two_guys.jpeg"))
-    chuck_norris = face_recognition.load_image_file(os.path.join(dir_path, "chuck.jpeg"))
-    faceless = face_recognition.load_image_file(os.path.join(dir_path, "faceless.png"))
+    OBAMA_IMAGE = face_recognition.load_image_file(os.path.join(DIR_PATH, "obama.jpeg"))
+    UNKNOWN_IMAGE = face_recognition.load_image_file(os.path.join(DIR_PATH, "obama2.jpeg"))
+    UNKNOWN_IMAGE2 = face_recognition.load_image_file(os.path.join(DIR_PATH, "krzych.jpeg"))
+    TWO_GUYS = face_recognition.load_image_file(os.path.join(DIR_PATH, "two_guys.jpeg"))
+    CHUCK_NORRIS = face_recognition.load_image_file(os.path.join(DIR_PATH, "chuck.jpeg"))
+    FACELESS = face_recognition.load_image_file(os.path.join(DIR_PATH, "faceless.png"))
 
+    CLOUD.start_local_run()
     initialize_service()
-    assert register(obama_image, "Barrack Obama") == "OK"
-    assert register(chuck_norris, "Chuck Norris") == "OK"
-    assert recognize(unknown_image) == ["Barrack Obama"]
-    with open(os.path.join(dir_path, "obama2.jpeg"), "rb") as file:
-        image_bytes = file.read()
+    assert register(OBAMA_IMAGE, "Barrack Obama") == "OK"
+    assert register(CHUCK_NORRIS, "Chuck Norris") == "OK"
+    assert recognize(UNKNOWN_IMAGE) == ["Barrack Obama"]
+    with open(os.path.join(DIR_PATH, "obama2.jpeg"), "rb") as file:
+        IMAGE_BYTES = file.read()
+    assert recognize(IMAGE_BYTES) == ["Barrack Obama"]
+    assert recognize(UNKNOWN_IMAGE2) == []
 
-    assert recognize(image_bytes) == ["Barrack Obama"]
-    assert recognize(unknown_image2) == []
+    assert register(TWO_GUYS, ["Chuck Norris", "Liam Neeson"]) == TOO_MANY_FACES
+    assert register(FACELESS, []) == NO_FACE_DETECTED
+    assert "already exists" in register(CHUCK_NORRIS, "Chuck Norris")
 
-    assert register(two_guys, ["Chuck Norris", "Liam Neeson"]) == TOO_MANY_FACES
-    assert register(faceless, []) == NO_FACE_DETECTED
-    assert "already exists" in register(chuck_norris, "Chuck Norris")
-
-    assert recognize(two_guys) == ["Chuck Norris"]  # one guy only detected
+    assert recognize(TWO_GUYS) == ["Chuck Norris"]  # one guy only detected
 
     CLOUD.configure_service("face_recognition", exposed=True, package_deps=["cmake"])
     CLOUD.set_basic_auth_credentials("pycloud", "demo")
-    CLOUD.save()
+    CLOUD.end_local_run()
