@@ -60,9 +60,15 @@ def register(image, name):
 def recognize(image):
     known_encodings, known_names = CLOUD.initialized_data()
     image = CLOUD.call(preprocess, image)
-    unknown_encoding = CLOUD.call(encode, image)
-    matches = face_recognition.compare_faces(known_encodings, unknown_encoding[0])
-    result = list(compress(known_names, matches))
+    unknown_encodings = CLOUD.call(encode, image)
+    all_matches = None
+    for encoding in unknown_encodings:
+        matches = face_recognition.compare_faces(known_encodings, encoding)
+        if all_matches is None:
+            all_matches = matches
+        else:
+            all_matches = [x | y for (x, y) in zip(all_matches, matches)]
+    result = list(compress(known_names, all_matches))
     return result
 
 
@@ -72,10 +78,12 @@ if __name__ == "__main__":
     UNKNOWN_IMAGE2 = face_recognition.load_image_file(os.path.join(DIR_PATH, "krzych.jpeg"))
     TWO_GUYS = face_recognition.load_image_file(os.path.join(DIR_PATH, "two_guys.jpeg"))
     CHUCK_NORRIS = face_recognition.load_image_file(os.path.join(DIR_PATH, "chuck.jpeg"))
+    LIAM_NEESON = face_recognition.load_image_file(os.path.join(DIR_PATH, "liam.jpeg"))
     FACELESS = face_recognition.load_image_file(os.path.join(DIR_PATH, "faceless.png"))
 
     CLOUD.start_local_run()
     initialize_service()
+
     assert register(OBAMA_IMAGE, "Barrack Obama") == "OK"
     assert register(CHUCK_NORRIS, "Chuck Norris") == "OK"
     assert recognize(UNKNOWN_IMAGE) == ["Barrack Obama"]
@@ -89,6 +97,8 @@ if __name__ == "__main__":
     assert "already exists" in register(CHUCK_NORRIS, "Chuck Norris")
 
     assert recognize(TWO_GUYS) == ["Chuck Norris"]  # one guy only detected
+    assert register(LIAM_NEESON, "Liam Neeson") == "OK"
+    assert recognize(TWO_GUYS) == ["Chuck Norris", "Liam Neeson"]
 
     CLOUD.configure_service("face_recognition", exposed=True, package_deps=["cmake"])
     CLOUD.set_basic_auth_credentials("pycloud", "demo")
