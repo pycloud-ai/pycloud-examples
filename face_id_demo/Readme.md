@@ -5,7 +5,8 @@ Creating functional face id cloud service from less than 100 lines of code with 
 ## Preparation of python environment
 Download pycloud from https://pycloud.ai#download
 
-```virtualenv ~/.venv -p python3
+```
+virtualenv ~/.venv -p python3
 
 . ~/.venv3/bin/activate
 
