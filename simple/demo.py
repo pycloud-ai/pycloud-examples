@@ -21,7 +21,7 @@ from pycloud.core import PyCloud
 
 CLOUD = PyCloud.get_instance()
 
-LOGGER = logging.getLogger("SimpleDmoe")
+LOGGER = logging.getLogger("SimpleDemo")
 
 
 @CLOUD.endpoint("compute-service")
