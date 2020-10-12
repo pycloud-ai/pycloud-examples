@@ -16,6 +16,7 @@
 #
 
 import logging
+import time
 
 from pycloud.core import PyCloud
 
@@ -27,9 +28,9 @@ LOGGER = logging.getLogger("SimpleDemo")
 @CLOUD.endpoint("compute-service")
 def compute(op, a, b):
     if op == "add":
-        return CLOUD.call(add, a, b)
+        return add(a, b)
     elif op == "multiply":
-        return CLOUD.call(multiply, a, b)
+        return multiply(a, b)
     else:
         return "unknown op"
 
@@ -42,7 +43,7 @@ def add(a, b):
 @CLOUD.endpoint("multiply-service", protocols=['GRPC'])
 def multiply(a, b):
     result = a * b
-    CLOUD.message(publish, result)
+    CLOUD.enqueue(publish, result)
     return result
 
 
@@ -51,14 +52,14 @@ def initialize_publisher():
     return {"data": "something"}
 
 
-@CLOUD.endpoint("publish-service", protocols=['AMQP'])
+@CLOUD.queue_consumer("publish-service")
 def publish(result):
     data = CLOUD.initialized_data()
+    time.sleep(2)
     LOGGER.info("Result is : {}, and the data is: {}".format(result, data))
 
 
-if __name__ == "__main__":
-    CLOUD.start_local_run()
+def build_simple_app():
 
     initialize_publisher()
     val1 = compute("add", 2, 3)
@@ -68,4 +69,6 @@ if __name__ == "__main__":
 
     CLOUD.expose_service("compute-service")
     CLOUD.set_basic_auth_credentials("pycloud", "demo")
-    CLOUD.end_local_run()
+
+
+CLOUD.build(build_simple_app)

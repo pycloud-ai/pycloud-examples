@@ -41,9 +41,9 @@ def preprocess(image):
 
 @CLOUD.endpoint("face_recognition")
 def register(image, name):
-    image = CLOUD.call(preprocess, image)
+    image = preprocess(image)
     known_encodings, known_names = CLOUD.initialized_data()
-    encodings = CLOUD.call(encode, image)
+    encodings = encode(image)
     if len(encodings) == 0:
         return NO_FACE_DETECTED
     if len(encodings) > 1:
@@ -59,8 +59,8 @@ def register(image, name):
 @CLOUD.endpoint("face_recognition")
 def recognize(image):
     known_encodings, known_names = CLOUD.initialized_data()
-    image = CLOUD.call(preprocess, image)
-    unknown_encodings = CLOUD.call(encode, image)
+    image = preprocess(image)
+    unknown_encodings = encode(image)
     all_matches = None
     for encoding in unknown_encodings:
         matches = face_recognition.compare_faces(known_encodings, encoding)
@@ -72,7 +72,7 @@ def recognize(image):
     return result
 
 
-if __name__ == "__main__":
+def build_face_id_app():
     OBAMA_IMAGE = face_recognition.load_image_file(os.path.join(DIR_PATH, "obama.jpeg"))
     UNKNOWN_IMAGE = face_recognition.load_image_file(os.path.join(DIR_PATH, "obama2.jpeg"))
     UNKNOWN_IMAGE2 = face_recognition.load_image_file(os.path.join(DIR_PATH, "krzych.jpeg"))
@@ -81,7 +81,6 @@ if __name__ == "__main__":
     LIAM_NEESON = face_recognition.load_image_file(os.path.join(DIR_PATH, "liam.jpeg"))
     FACELESS = face_recognition.load_image_file(os.path.join(DIR_PATH, "faceless.png"))
 
-    CLOUD.start_local_run()
     initialize_service()
 
     assert register(OBAMA_IMAGE, "Barrack Obama") == "OK"
@@ -102,4 +101,6 @@ if __name__ == "__main__":
 
     CLOUD.configure_service("face_recognition", exposed=True, package_deps=["cmake"])
     CLOUD.set_basic_auth_credentials("pycloud", "demo")
-    CLOUD.end_local_run()
+
+
+CLOUD.build(build_face_id_app)
