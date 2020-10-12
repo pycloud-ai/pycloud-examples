@@ -61,7 +61,7 @@ def create_model():
 def classify(image):
     """ Run prediction on model"""
     predictions = CLOUD.initialized_data()["model"].predict(image)
-    return CLOUD.call(postprocess, predictions)
+    return postprocess(predictions)
 
 
 @CLOUD.endpoint("classificator")
@@ -71,10 +71,10 @@ def pre_process(image):
     dim = np.array((299, 299, 3))
     image = resize(image, dim)
     image = np.expand_dims(image, axis=0)
-    return CLOUD.call(classify, image)
+    return classify(image)
 
 
-@CLOUD.endpoint("asynchronous-consumer", protocols=["AMQP"])
+@CLOUD.queue_consumer("asynchronous-consumer")
 def asynchronous_consumer(message):
     LOGGER.info("Just received asynchronous message :%s", message)
 
@@ -85,18 +85,18 @@ def postprocess(results):
     index = np.argmax(results)
     LOGGER.info("Detected class number: %d", index)
     label = IMAGENET_LABELS[index]
-    CLOUD.message(asynchronous_consumer, label)
+    CLOUD.enqueue(asynchronous_consumer, label)
     return label
 
 
 @CLOUD.endpoint("api", protocols=["GRPC"])
 def api(image):
     """Run whole pipeline"""
-    result = CLOUD.call(pre_process, image)
+    result = pre_process(image)
     return result
 
 
-def test_and_deploy():
+def build_app():
     """Exec demo"""
     no_images = 1
     images = []
@@ -111,10 +111,9 @@ def test_and_deploy():
         show_image(image, label=detection)
         print("Test classification result: {}".format(detection))
 
+    CLOUD.configure_service("classificator", environment= {"MAX_GRPC_WORKERS": 1 })
     CLOUD.expose_service("api")
     CLOUD.set_basic_auth_credentials("pycloud", "demo")
-    CLOUD.save()
 
 
-if __name__ == "__main__":
-    test_and_deploy()
+CLOUD.build(build_app)

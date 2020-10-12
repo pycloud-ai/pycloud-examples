@@ -23,15 +23,12 @@ HOST = sys.argv[1]
 
 PORT_GRPC = sys.argv[2]
 
-PORT_HTTP = sys.argv[3]
 
-client_grpc = GRPCClient(HOST, PORT_GRPC, client_id="client_grpc")
-client_http = HTTPClient(HOST, PORT_HTTP, client_id="client_http")
+client = GRPCClient(HOST, PORT_GRPC, client_id="client_grpc")
 
 for _ in range(100000):
     a = random.randrange(1, 10)
     b = random.randrange(1, 10)
     op = random.choice(["add", "multiply"])
-    client = random.choice([client_http, client_grpc])
     result = client.request("compute@demo", op, a, b)
     print("{} {} {} = {}".format(a, op, b, result))
