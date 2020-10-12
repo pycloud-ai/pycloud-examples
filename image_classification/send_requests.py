@@ -55,24 +55,36 @@ def send_requests():
     for thread in threads:
         thread.join()
 
+expected_classess = { "laptop.jpeg": "laptop, laptop computer",
+                      "winter.jpeg": "snowplow",
+                      "knife.jpeg": "can opener",
+                      "shoe.jpeg": "running shoe",
+                      "orange.jpeg": "orange"
+                      }
 
 def request_thread(images, number):
     cntr = 0
+    errors = 0
+    idx = 0
     while True:
-        img, path = images[cntr]
+        img, path = images[idx]
         cntr += 1
-        if cntr == len(images):
-            cntr = 0
-        LOGGER.info("Inference on image: %s, size: %f MB", path, img.nbytes / 1000000)
+        idx += 1
+        if idx == len(images):
+            idx = 0
         t0 = time.time()
         detection = None
         try:
             detection = client.request("api@classification_demo", img)
+            t1 = time.time()
+            LOGGER.info("Detected class from image :%s: %s, time: %s seconds", path, detection, t1 - t0)
+            img_file = path.split("/")[-1]
+            if expected_classess[img_file] not in detection:
+                errors += 1 
+            LOGGER.info("Error ratio: %s", str(100 * errors/cntr)) 
         except Exception as e:
             print("exception during call: {}".format(e))
-        t1 = time.time()
-        LOGGER.info("Detected class: %s, time: %s seconds", detection, t1 - t0)
-
+        
 
 if __name__ == "__main__":
     send_requests()
