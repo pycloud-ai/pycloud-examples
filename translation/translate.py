@@ -47,7 +47,7 @@ def translate(text):
     return CLOUD.initialized_data()['model'].translate(text)
 
 
-if __name__ == "__main__":
+def build_translate_app():
     init_model()
 
     translate('Hello world!')
@@ -55,4 +55,6 @@ if __name__ == "__main__":
 
     CLOUD.configure_service("translator", exposed=True, package_deps=["gcc", "g++"])
     CLOUD.set_basic_auth_credentials("pycloud", "demo")
-    CLOUD.save()
+
+
+CLOUD.build(build_translate_app)

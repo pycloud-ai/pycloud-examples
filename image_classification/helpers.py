@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-
+import os
 import random
 import logging
 import glob
@@ -24,9 +24,10 @@ from PIL import Image
 
 LOGGER = logging.getLogger("DemoHelpers")
 
+directory = os.path.dirname(os.path.realpath(__file__))
 
 def get_random_image():
-    path = random.choice(glob.glob("images/*.jpeg"))
+    path = random.choice(glob.glob(os.path.join(directory, "images/*.jpeg")))
     img = cv2.imread(path)
     while img.nbytes > 1000000:
         img = cv2.resize(img, (int(img.shape[1] / 1.1), int(img.shape[0] // 1.1)))
