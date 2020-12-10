@@ -16,25 +16,23 @@
 #
 
 """Classify images using pretrained keras inception resnet"""
+import io
 import logging
 
 import numpy as np
+from PIL.Image import Image
 
 from skimage.transform import resize
 from tensorflow.keras.applications.inception_resnet_v2 import (  # pylint: disable=import-error
     InceptionResNetV2,
 )
 from pycloud.core import PyCloud
-from pycloud.helpers import is_this_executed_on_runner
 from pycloud.config import configure_logging
+from PIL import Image
 
 from classess import IMAGENET_LABELS
+from helpers import get_image, show_image
 
-if not is_this_executed_on_runner():
-    from helpers import (  # pylint: disable=no-name-in-module
-        show_image,
-        get_random_image,
-    )
 configure_logging()
 
 LOGGER = logging.getLogger("ClassificationDemo")
@@ -58,7 +56,7 @@ def create_model():
 
 
 @CLOUD.endpoint("classificator")
-def classify(image):
+def predict(image):
     """ Run prediction on model"""
     predictions = CLOUD.initialized_data()["model"].predict(image)
     return postprocess(predictions)
@@ -67,51 +65,69 @@ def classify(image):
 @CLOUD.endpoint("classificator")
 def pre_process(image):
     """Resize image to size expected by model"""
+    if isinstance(image, bytes):
+        image = Image.open(io.BytesIO(image))
+        image = np.array(image.convert("RGB"))
     LOGGER.info("Input image shape: %s", len(image.shape))
     dim = np.array((299, 299, 3))
     image = resize(image, dim)
     image = np.expand_dims(image, axis=0)
-    return classify(image)
+    return predict(image)
 
 
-@CLOUD.queue_consumer("asynchronous-consumer")
-def asynchronous_consumer(message):
-    LOGGER.info("Just received asynchronous message :%s", message)
+@CLOUD.init_service("postprocessing")
+def init_postprocessing():
+    return {"accuracy_threshold": 0.7 }
+
+
+@CLOUD.queue_consumer("postprocessing")
+def set_acc_threshold(threshold):
+    threshold = float(threshold)
+    CLOUD.initialized_data()['accuracy_threshold'] = threshold
+    CLOUD.collect_metric('Accuracy threshold', ['LAST'], threshold)
 
 
 @CLOUD.endpoint("postprocessing")
-def postprocess(results):
+def postprocess(predictions):
     """ Convert model output to string label"""
-    index = np.argmax(results)
-    LOGGER.info("Detected class number: %d", index)
-    label = IMAGENET_LABELS[index]
-    CLOUD.enqueue(asynchronous_consumer, label)
+    index = np.argmax(predictions)
+    accuracy = predictions[0][index]
+    CLOUD.collect_metric("Accuracy", ["MIN", "MAX"], accuracy)
+    LOGGER.info("Detected class number: %d, accuracy %f", index, accuracy)
+    if accuracy >= CLOUD.initialized_data()['accuracy_threshold']:
+        label = IMAGENET_LABELS[index]
+        CLOUD.collect_metric("Classified", ["COUNT"], 1)
+    else:
+        CLOUD.collect_metric("Not classified", ["COUNT"], 1)
+        label = ""
     return label
 
 
-@CLOUD.endpoint("api", protocols=["GRPC"])
-def api(image):
-    """Run whole pipeline"""
+@CLOUD.endpoint("api")
+def classify(image):
+    """Put image into pipeline"""
     result = pre_process(image)
     return result
 
 
-def build_app():
-    """Exec demo"""
-    no_images = 1
-    images = []
-    for _ in range(no_images):
-        img, keywords = get_random_image()
-        images.append((img, keywords))
+@CLOUD.endpoint("api")
+def set_threshold(threshold):
+    CLOUD.broadcast(set_acc_threshold, threshold)
 
+
+def build_app():
+    """Test and build graph"""
+
+    init_postprocessing()
     create_model()
-    for image, description in images:
-        LOGGER.info("Testing with image: %s", description)
-        detection = api(image)
-        show_image(image, label=detection)
+    set_threshold(0.6)
+    for path in ["images/laptop.jpeg", "images/winter.jpeg"]:
+        image, path = get_image(path)
+        LOGGER.info("Testing with image: %s", path)
+        detection = classify(image)
         print("Test classification result: {}".format(detection))
 
-    CLOUD.configure_service("classificator", environment= {"MAX_GRPC_WORKERS": 1 })
+    CLOUD.configure_service("classificator", environment={"MAX_GRPC_WORKERS": 1 })
     CLOUD.expose_service("api")
     CLOUD.set_basic_auth_credentials("pycloud", "demo")
 
