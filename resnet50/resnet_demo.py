@@ -17,15 +17,15 @@
 
 """Classify images using pretrained keras inception resnet"""
 import io
+import os
 import logging
 
 import numpy as np
 from PIL.Image import Image
 
 from skimage.transform import resize
-from tensorflow.keras.applications.inception_resnet_v2 import (  # pylint: disable=import-error
-    InceptionResNetV2,
-)
+from tensorflow.keras.applications.inception_resnet_v2 import InceptionResNetV2
+from tensorflow.keras.models import save_model, load_model
 from pycloud.core import PyCloud
 from pycloud.config import configure_logging
 from PIL import Image
@@ -40,10 +40,19 @@ LOGGER = logging.getLogger("ClassificationDemo")
 CLOUD = PyCloud.get_instance()
 
 
-@CLOUD.init_service("classificator")
+@CLOUD.init_service("resnet")
 def create_model():
     """Create image classification object"""
-    model = InceptionResNetV2(
+    file_name = "./resnet50.h5"
+
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    full_path = os.path.join(dir_path, file_name)
+    if os.path.exists(full_path):
+        model = load_model(
+            full_path, custom_objects=None, compile=True
+        )
+    else:
+        model = InceptionResNetV2(
             include_top=True,
             weights="imagenet",
             input_tensor=None,
@@ -51,18 +60,22 @@ def create_model():
             pooling=None,
             classes=1000,
         )
+        save_model(
+            model, full_path, overwrite=True, include_optimizer=True, save_format=None,
+            signatures=None, options=None
+        )
     data = {"model": model}
     return data
 
 
-@CLOUD.endpoint("classificator")
+@CLOUD.endpoint("resnet")
 def predict(image):
     """ Run prediction on model"""
     predictions = CLOUD.initialized_data()["model"].predict(image)
     return postprocess(predictions)
 
 
-@CLOUD.endpoint("classificator")
+@CLOUD.endpoint("resnet")
 def pre_process(image):
     """Resize image to size expected by model"""
     if isinstance(image, bytes):
@@ -77,7 +90,7 @@ def pre_process(image):
 
 @CLOUD.init_service("postprocessing")
 def init_postprocessing():
-    return {"accuracy_threshold": 0.7 }
+    return {"accuracy_threshold": 0.7}
 
 
 @CLOUD.queue_consumer("postprocessing")
@@ -127,7 +140,7 @@ def build_app():
         detection = classify(image)
         print("Test classification result: {}".format(detection))
 
-    CLOUD.configure_service("classificator", environment={"MAX_GRPC_WORKERS": 1 })
+    CLOUD.configure_service("resnet", environment={"MAX_GRPC_WORKERS": 1})
     CLOUD.expose_service("api")
     CLOUD.set_basic_auth_credentials("pycloud", "demo")
 
