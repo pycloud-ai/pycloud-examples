@@ -116,7 +116,7 @@ def preprocess(image):
     CLOUD.collect_metric("t1", ["MIN","MAX","MEAN"], t1-t0)
     CLOUD.collect_metric("t2", ["MIN","MAX","MEAN"], t2-t1)
     CLOUD.collect_metric("t3", ["MIN","MAX","MEAN"], t3-t2)
-    CLOUD.collect_metric("t3", ["MIN","MAX","MEAN"], t4-t3)
+    CLOUD.collect_metric("t4", ["MIN","MAX","MEAN"], t4-t3)
     return result
 
 
